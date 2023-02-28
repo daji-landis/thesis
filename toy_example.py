@@ -1,10 +1,11 @@
 import random
 from datetime import datetime
+import math
 
 def coin_flip(p = 0.5):
     random.seed(datetime.now().timestamp())
     result = random.random()
-    print(str(result))
+    # print(str(result))
     if result <= p:
         return 1
     else:
@@ -36,46 +37,63 @@ class Wallet:
         else:
             self.funds = self.funds - delta
 
+
 # defining contract
 class SmartContract:
-    def __init__(self, prover, verifier, stake = 0, circut = "none"):
+    def __init__(self, prover, verifier, funds = 0, circuit = "none"):
         self.prover = prover
         self.verifier = verifier
-        self.stake = stake
-        self.circut = circut
+        self.funds = funds
+        self.circuit = circuit
 
     def __str__(self):
-        return f"P: {self.prover} V: {self.verifier} staked funds: {self.stake}"
+        return f"P: {self.prover} V: {self.verifier} staked funds: {self.funds}"
 
     def burn(self, delta = 0):
         if delta == 0:
-            self.stake = 0
+            self.funds = 0
         else:
-            self.stake = self.stake - delta
+            self.funds = self.funds - delta
 
     def deposit(self, delta):
-        self.stake += delta
+        self.funds += delta
 
 def main():
-    p=0.1
+    p = 0.9
     # initialize everyone with funds
     player_v = Wallet("Vivian", 100)
     player_p = Wallet("Petra", 100)
     contract = SmartContract(player_p, player_v)
 
-    # verifier stakes funds and sends info
-    stake_amount_v = 40
-    transfer(player_v, contract, stake_amount_v)
+    # verifier fundss funds and sends info
+    funds_amount_v = 40
+    transfer(player_v, contract, funds_amount_v)
 
     x = 5
-    print("I want my input, " + str(x) + ",squared.")
+    print("I want my input, " + str(x) + ", squared.")
+
+    circuit = lambda x:x*x
 
     # prover stakes funds
-    stake_amount_p = 50
-    transfer(player_p, contract, stake_amount_p)
-    y = x^2
+    funds_amount_p = 50
+    transfer(player_p, contract, funds_amount_p)
+    y = circuit(x) # + 100
+    proof = lambda y:int(math.sqrt(y))
 
-    coin_flip(p)
+    # exicute contract
+    z = coin_flip(p)
+
+    if z == 0:
+        transfer(contract, player_v, contract.funds)
+    else:
+        print("check")
+        # print(str(x) + str(y) + str(proof(y)))
+        if proof(y) == x:
+            transfer(contract, player_v, contract.funds)
+        else:
+            transfer(contract, player_p, funds_amount_p)
+            print("boooo you lied")
+            contract.burn()
 
     print(contract)
 
