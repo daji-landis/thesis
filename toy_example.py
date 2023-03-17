@@ -42,14 +42,25 @@ class InfoPacket:
     def evaluate(self):
         return self.circuit(self.data)
 
-# defining player wallet
-class Wallet:
-    def __init__(self, name, init_funds = 0):
+class Player:
+    def __init__(self, name, proof = lambda x:x, circuit_info = InfoPacket(), funds = 0):
         self.name =  name
-        self.funds = init_funds
+        self.funds = funds
+        self.circuit_info = circuit_info
+        self.proof_info = InfoPacket(0, proof)
+        self.r = random.randint(10000, 100000)
 
     def __str__(self):
         return f"{self.name}({self.funds})"
+
+    def do_computation(self):
+        # do the computation and save to proof info packet, just for prover
+        self.proof_info.data = self.circuit_info.evaluate()
+
+    def player_commit_hash(self, contract):
+        # does hash and publishes the result to the contract
+        my_hash = hash(self.r)
+        contract.commit_hash(id = self.name , hash = my_hash)
 
     def deposit(self, delta):
         self.funds += delta
@@ -59,22 +70,6 @@ class Wallet:
             print("Insufficient funds")
         else:
             self.funds = self.funds - delta
-
-class player:
-    def __init__(self, wallet, proof):
-        self.wallet = wallet
-        self.circuit_info = InfoPacket()
-        self.proof_info = InfoPacket(0, proof)
-        self.r = random.randint(10000, 100000)
-        # self.hash = hash(self.r)
-
-    def do_computation(self):
-        # do the computation and save to proof info packet, just for prover
-        self.proof_info.data = self.circuit_info.evaluate()
-
-    def player_commit_hash(self, contract):
-        my_hash = hash(self.r)
-        contract.commit_hash(id = self.wallet.name , hash = my_hash)
 
 class contract_states(Enum):
     start = 1
@@ -185,9 +180,9 @@ class SmartContract:
 
     def exicute_assess_state(self):
         if self.state == 4: # good
-            transfer(self, self.verifier.wallet, self.funds) # pay verifier
+            transfer(self, self.verifier, self.funds) # pay verifier
         elif self.state == 5: # badness
-            transfer(self, self.prover.wallet, self.funds)
+            transfer(self, self.prover, self.funds)
             self.burn()
             print("burnt")
         else:
@@ -195,24 +190,17 @@ class SmartContract:
 
 
 def main():
-    p = 0.9
-    # initialize everyone with funds
-    wallet_v = Wallet("Vivian", 100)
-    wallet_p = Wallet("Petra", 100)
+    p = 0.9 #prob of rolling to require verification by the contract
 
     # verifier's info
     circuit = lambda x:x*x
     x = 5
     info_v = InfoPacket(x, circuit)
-    player_v = player(wallet_v, info_v)
+    player_v = Player("Vivian", circuit_info = info_v, funds = 100)
 
     # prover's info
     proof = lambda y:int(math.sqrt(y))
-    player_p = player(wallet_p, proof)
-
-    # print(player_p.r)
-    # print(player_p.hash)
-
+    player_p = Player("Petra", proof = proof, funds = 100)
 
     # contract info
     stake_v = 40 # staking value alpha from notes
@@ -221,14 +209,14 @@ def main():
     contract = SmartContract(player_p, player_v, stake_p, stake_v)
 
     # verifier stakes funds and sends info
-    transfer(player_v.wallet, contract, contract.stake_v) # stake
+    transfer(player_v, contract, contract.stake_v) # stake
 
     player_p.circuit_info = player_v.circuit_info # send info packet to prover
     contract.circuit_info = player_v.circuit_info # send info packet to contract
     print("V: I want my input, " + str(player_v.circuit_info.data) + ", squared.")
 
     # prover stakes funds, evaluates and 'creates proof'
-    transfer(player_p.wallet, contract, stake_p) # stake funds
+    transfer(player_p, contract, stake_p) # stake funds
 
     contract.exicute_check_stake() # check correct staking
 
@@ -250,8 +238,8 @@ def main():
 
     contract.exicute_assess_state()
 
-    print(player_v.wallet)
-    print(player_p.wallet)
+    print(player_v)
+    print(player_p)
     print(contract)
 
 if __name__ == "__main__":
