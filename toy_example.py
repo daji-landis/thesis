@@ -40,6 +40,7 @@ class InfoPacket:
         self.circuit = circuit
 
     def evaluate(self):
+        # plug the data into the lambda
         return self.circuit(self.data)
 
 class Player:
@@ -51,6 +52,7 @@ class Player:
         self.r = random.randint(10000, 100000)
 
     def __str__(self):
+        # print name and fund info
         return f"{self.name}({self.funds})"
 
     def do_computation(self):
@@ -63,9 +65,11 @@ class Player:
         contract.commit_hash(id = self.name , hash = my_hash)
 
     def deposit(self, delta):
+        # deposit function for the players, called by the transaction function
         self.funds += delta
 
     def burn(self, delta):
+        # burn function for the players, called by the transaction function
         if delta > self.funds:
             print("Insufficient funds")
         else:
@@ -77,7 +81,6 @@ class contract_states(Enum):
     verify = 3
     good = 4
     badness = 5
-
 
 # defining contract
 class SmartContract:
@@ -97,7 +100,6 @@ class SmartContract:
     def __str__(self):
         # returns funds and staked money left in the contract at the end, which should be 0
         return( f"Staked funds: {self.funds}" + " Contract State: "+ str(contract_states(self.state).name))
-
 
     def burn(self, delta = 0):
     # burns funds in contract. burns all funds by default
@@ -123,14 +125,16 @@ class SmartContract:
             return False
 
     def commit_hash(self, id, hash):
+        # the players call this function to commit the hash of their randomness
         if id == "Vivian" and self.v_hash == 0:
             self.v_hash = hash
         elif id == "Petra" and self.p_hash == 0:
             self.p_hash = hash
         else:
-            print("commit failed")
+            print("Commit Failed")
 
-    def check_hash(self, r, old_hash):
+    def check_hash(self, r, old_hash): # old_hash is the player's commited hash
+        # hashes randomness to check the hash of the player
         old_hash = old_hash.hexdigest()
         new_hash = hash(r).hexdigest()
         if new_hash == old_hash:
@@ -156,11 +160,11 @@ class SmartContract:
         check_2 = self.check_hash(r_p, self.p_hash)
 
         if check_1 and check_2 == True:
-            self.state = 2
+            self.state = 2 # 2 is commited
         else:
-            self.state = 5
+            self.state = 5 # 5 is badness
 
-        seed = r_v ^ r_p
+        seed = r_v ^ r_p # combine the hashed randomness of the players
 
         if self.state == 2:
             z = coin_flip(p, seed)
@@ -182,8 +186,8 @@ class SmartContract:
         if self.state == 4: # good
             transfer(self, self.verifier, self.funds) # pay verifier
         elif self.state == 5: # badness
-            transfer(self, self.prover, self.funds)
-            self.burn()
+            transfer(self, self.prover, self.funds) # prover gets her money back
+            self.burn() # burn everything else
             print("burnt")
         else:
             print("panic")
@@ -193,13 +197,13 @@ def main():
     p = 0.9 #prob of rolling to require verification by the contract
 
     # verifier's info
-    circuit = lambda x:x*x
-    x = 5
-    info_v = InfoPacket(x, circuit)
+    circuit = lambda x:x*x # circuit is squaring the input
+    x = 5 # and here is the input
+    info_v = InfoPacket(x, circuit) # the verifier's information, data and circuit
     player_v = Player("Vivian", circuit_info = info_v, funds = 100)
 
     # prover's info
-    proof = lambda y:int(math.sqrt(y))
+    proof = lambda y:int(math.sqrt(y)) # hardcode the proof of the computation
     player_p = Player("Petra", proof = proof, funds = 100)
 
     # contract info
@@ -220,8 +224,6 @@ def main():
 
     contract.exicute_check_stake() # check correct staking
 
-    # contract.v_hash = player_v.hash
-    # contract.p_hash = player_p.hash
     player_v.player_commit_hash(contract)
     player_p.player_commit_hash(contract)
 
