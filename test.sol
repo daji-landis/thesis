@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.8;
 
-contract test {
+contract test {  // enum for contract states.  I don't understand all the syntax here
     enum ContractState { Start, Committed, Verify, Good, Bad }
     ContractState state;
     ContractState constant defaultState = ContractState.Start;
@@ -13,6 +13,8 @@ contract test {
     function getBalance() public view returns(uint256) {
       return address(this).balance;
     }
+
+    // basic info for players.  This could be naked but this is fine
     struct Agreement {
         address verifierAddress;
         address proverAddress;
@@ -22,48 +24,54 @@ contract test {
         uint verifierCircuit;
     }
 
+    // randomness structure that is also unnecessary
     struct Randomness{
         bool proverBit;
         bool verifierBit;
     }
 
-    Agreement public agreement;
-    Randomness public randomness;
+    Agreement public agreement;  // initialize agreement structure
+    Randomness public randomness; // initialize randomness
 
     function verifierCommit(uint _verifierStake, uint _proverStake, uint _verifierInput, uint _verifierCircuit) public payable {
-        require(_verifierStake > 0);
+        // verifier sets stakes and sumbits its address and input info
+        require(_verifierStake > 0); // require non-zero stakes
         require(_proverStake > 0);
-        require(msg.value == _verifierStake);
+        require(msg.value == _verifierStake); // require that the verifier deposits the amount they say the do
         agreement = Agreement(msg.sender,address(0),_verifierStake, _proverStake, _verifierInput, _verifierCircuit);
+        // above puts all the values into the agreement structure
     }
 
 
     function proverCommit() public payable {
-        require(msg.value == agreement.proverStake);
-        agreement.proverAddress = msg.sender;
+        // prover commits to the agreement as stipulated by verifier
+        require(msg.value == agreement.proverStake); // deposited funds much match
+        agreement.proverAddress = msg.sender; // record prover address
     }
 
-    function checkCommit() public {
-        require(msg.sender == agreement.verifierAddress);
-        require(agreement.proverAddress != agreement.verifierAddress);
-        require(agreement.proverStake > 0);
+    function checkCommit() public { // checks proper committment.  Must be called to advance
+        require(msg.sender == agreement.verifierAddress); // can only be called by verifier (maybe not necessary)
+        require(agreement.proverAddress != agreement.verifierAddress); // check that the addresses are not the same
+        require(agreement.proverStake > 0);  // check that nonzero commitment means there must be proper commitment
         require(agreement.verifierStake > 0);
-        state = ContractState.Committed;
+        state = ContractState.Committed; // update state to Committed
     }
 
     function verifierRandomness(bool _verifierBit) public {
+        // verifer commits randomness
         require(msg.sender == agreement.verifierAddress);
         randomness.verifierBit = _verifierBit;
     }
 
     function proverRandomness(bool _proverBit) public {
+        // prover commits to randomness
         require(msg.sender == agreement.proverAddress);
         randomness.verifierBit = _proverBit;
     }
 
-    uint result;
+    uint result; // result of computation
     function submitResult(uint _result) public{
-        require(msg.sender == agreement.proverAddress);
+        require(msg.sender == agreement.proverAddress);  // must be
         result = _result;
     }
 
