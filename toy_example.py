@@ -184,9 +184,9 @@ class SmartContract:
 
     def exicute_assess_state(self):
         if self.state == 4: # good
-            transfer(self, self.verifier, self.funds) # pay verifier
+            transfer(self, self.prover, self.funds) # pay prover
         elif self.state == 5: # badness
-            transfer(self, self.prover, self.funds) # prover gets her money back
+            transfer(self, self.verifier, self.funds) # verifier gets her money back
             self.burn() # burn everything else
             print("burnt")
         else:
