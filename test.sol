@@ -7,7 +7,7 @@ contract test {  // enum for contract states.  I don't understand all the syntax
     ContractState constant defaultState = ContractState.Start;
 
     function getState() public view returns (ContractState) {
-        return state;
+        return state; //TODO: make this return the actual name of the state
     }
 
     function getBalance() public view returns(uint256) {
@@ -76,7 +76,7 @@ contract test {  // enum for contract states.  I don't understand all the syntax
     }
 
     function resolveState() public {
-        require(msg.sender == agreement.verifierAddress);
+        require(msg.sender == agreement.proverAddress); // maybe both
         bool coinflip = randomness.proverBit != randomness.verifierBit;
         if (coinflip == true){
             state = ContractState.Good;
@@ -104,13 +104,13 @@ contract test {  // enum for contract states.  I don't understand all the syntax
     function proverWithdraw() public payable {
         require(msg.sender == agreement.proverAddress);
         require(state == ContractState.Good);
-        // withdraw
+        payable(msg.sender).transfer(address(this).balance); // empty into prover wallet
     }
 
     function verifierWithdraw() public payable {
         require(msg.sender == agreement.verifierAddress);
         require(state == ContractState.Bad);
-        // withdraw
+        payable(msg.sender).transfer(agreement.verifierStake); // withdraw stake
     }
 
 }
