@@ -193,8 +193,10 @@ contract test {  // enum for contract states.  I don't understand all the syntax
 
     // randomness structure that is also unnecessary
     struct Randomness{
-        bool proverBit;
-        bool verifierBit;
+        bytes32  proverHash;
+        bytes32  verifierHash;
+        uint proverPreimage;
+        uint verifierPreimage;
     }
 
 
@@ -226,28 +228,39 @@ contract test {  // enum for contract states.  I don't understand all the syntax
         state = ContractState.Committed; // update state to Committed
     }
 
-    function verifierRandomness(bool _verifierBit) public {
+    function verifierRandomness(bytes32  _verifierHash) public {
         // verifer commits randomness
-        require(msg.sender == agreement.verifierAddress);
-        randomness.verifierBit = _verifierBit;
+        // require(msg.sender == agreement.verifierAddress);
+        randomness.verifierHash = _verifierHash;
     }
 
-    function proverRandomness(bool _proverBit) public {
+    function proverRandomness(bytes32  _proverHash) public {
         // prover commits to randomness
-        require(msg.sender == agreement.proverAddress);
-        randomness.verifierBit = _proverBit;
+        // require(msg.sender == agreement.proverAddress);
+        randomness.proverHash = _proverHash;
     }
 
-    uint result; // result of computation
-    function submitResult(uint _result) public{
-        require(msg.sender == agreement.proverAddress);  // must be
+    uint result; // result of computation and prover opening commitment
+    function submitResult(uint _result, uint _proverPreimage) public{
+        //require(msg.sender == agreement.proverAddress);  // must be prover
         result = _result;
+        randomness.proverPreimage = _proverPreimage;
+    }
+
+    function verifierOpen(uint _verifierPreimage) public {
+        //require(msg.sender == agreement.verifierAddress);
+        randomness.verifierPreimage = _verifierPreimage;
     }
 
     function resolveState() public {
-        require(msg.sender == agreement.proverAddress); // maybe both
-        bool coinflip = randomness.proverBit != randomness.verifierBit;
-        if (coinflip == true){
+        // require(msg.sender == agreement.proverAddress); // maybe both
+        // require(keccak256(abi.encodePacked(randomness.proverPreimage)) == randomness.proverHash && keccak256(abi.encodePacked(randomness.verifierPreimage)) == randomness.verifierHash, "doesn't match");
+
+        require(keccak256(abi.encodePacked(randomness.proverPreimage)) == randomness.proverHash, "prover doesn't match");
+        require(keccak256(abi.encodePacked(randomness.verifierPreimage)) == randomness.verifierHash, "verifer doesn't match");
+
+        uint sum = randomness.proverPreimage + randomness.verifierPreimage;
+        if (sum % 2 == 0){
             state = ContractState.Good;
         }
         else{
